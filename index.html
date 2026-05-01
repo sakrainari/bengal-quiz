@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ベンガル語クイズ for 稲荷</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="character.js"></script>
+    <script src="bengalnames.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .bengali-text { font-family: 'Noto Sans Bengali', sans-serif; }
+        .btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn:active { transform: scale(0.98); }
+        .opt.correct { background-color: #dcfce7; border-color: #22c55e; color: #166534; box-shadow: 0 0 0 2px #22c55e; }
+        .opt.wrong { background-color: #fee2e2; border-color: #ef4444; color: #991b1b; }
+        .opt:disabled { cursor: default; pointer-events: none; }
+        .progress-bar { transition: width 0.1s linear; }
+        .analysis-card { background: rgba(255,255,255,0.8); }
+    </style>
+</head>
+<body class="antialiased">
+
+<div class="container mx-auto p-4 max-w-2xl min-h-screen flex flex-col">
+    <header class="text-center my-6">
+        <h1 class="text-5xl font-black text-indigo-900 mb-2 bengali-text">বাংলা Quiz</h1>
+        <p class="text-gray-500 font-bold tracking-widest uppercase text-xs">GeoGuessr Research</p>
+    </header>
+
+    <main class="flex-grow">
+        <section id="setup" class="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100">
+            <h2 class="text-2xl font-bold mb-8 text-indigo-900 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                クイズ設定
+            </h2>
+
+            <div class="space-y-8">
+                <div>
+                    <label class="block text-sm font-black text-gray-400 uppercase mb-4">モードを選択</label>
+                    <div class="grid grid-cols-1 gap-3">
+                        <label class="group cursor-pointer">
+                            <input type="radio" name="mode" value="place" class="hidden peer" checked>
+                            <div class="p-4 border-2 rounded-2xl peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 group-hover:border-indigo-300 transition flex justify-between items-center gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-lg">実戦地名（看板・標識）</span>
+                                    <span class="px-2 py-0.5 bg-green-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider">推奨</span>
+                                </div>
+                                <span id="place-total" class="text-xs opacity-60 whitespace-nowrap">読み込み中</span>
+                            </div>
+                        </label>
+                        <label class="group cursor-pointer">
+                            <input type="radio" name="mode" value="consonant" class="hidden peer">
+                            <div class="p-4 border-2 rounded-2xl peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 group-hover:border-indigo-300 transition flex justify-between items-center gap-3">
+                                <span class="font-bold text-lg">基礎: 子音だけ</span>
+                                <span id="consonant-total" class="text-xs opacity-60 whitespace-nowrap">読み込み中</span>
+                            </div>
+                        </label>
+                        <label class="group cursor-pointer">
+                            <input type="radio" name="mode" value="syllable" class="hidden peer">
+                            <div class="p-4 border-2 rounded-2xl peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 group-hover:border-indigo-300 transition flex justify-between items-center gap-3">
+                                <span class="font-bold text-lg">基礎: 子音＋母音記号</span>
+                                <span id="syllable-total" class="text-xs opacity-60 whitespace-nowrap">読み込み中</span>
+                            </div>
+                        </label>
+                    </div>
+                    <p class="mt-4 text-sm font-bold text-gray-500 leading-relaxed">
+                        GeoGuessr実戦向けに「実戦地名」を推奨。看板・標識で頻出する地名を4択で答えます。答えた後に文字の分解解説も確認できます。
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-black text-gray-400 uppercase mb-2">出題数</label>
+                        <select id="count" class="w-full p-4 border-2 rounded-2xl focus:border-indigo-500 outline-none font-bold bg-gray-50">
+                            <option value="10">10問</option>
+                            <option value="20">20問</option>
+                            <option value="50">50問</option>
+                            <option value="all" selected>全問</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-black text-gray-400 uppercase mb-2">制限時間</label>
+                        <select id="limit" class="w-full p-4 border-2 rounded-2xl focus:border-indigo-500 outline-none font-bold bg-gray-50">
+                            <option value="0">なし</option>
+                            <option value="10">10秒 (Blitz)</option>
+                            <option value="15" selected>15秒 (Standard)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <button id="start-btn" class="w-full mt-12 bg-indigo-600 text-white font-black py-5 rounded-2xl text-xl shadow-xl hover:bg-indigo-700 hover:shadow-indigo-200 transition transform hover:-translate-y-1">
+                ミッション開始
+            </button>
+        </section>
+
+        <section id="quiz" style="display:none;">
+            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+                <div class="p-6 bg-gray-50 flex justify-between items-center border-b">
+                    <span id="q-no" class="font-black text-indigo-400 text-sm tracking-tighter"></span>
+                    <span id="q-score" class="font-black text-indigo-900">Score: 0</span>
+                </div>
+                <div class="h-1.5 bg-gray-100 w-full">
+                    <div id="timer-bar" class="progress-bar h-full bg-indigo-500 w-full"></div>
+                </div>
+                <div class="p-8">
+                    <div class="flex justify-center items-center py-16 bg-indigo-50 rounded-3xl mb-8 border border-indigo-100 overflow-hidden">
+                        <div id="q-display" class="bengali-text text-9xl font-black text-indigo-900 drop-shadow-sm text-center px-4 break-words"></div>
+                    </div>
+                    <div id="options" class="grid grid-cols-2 gap-4"></div>
+
+                    <div id="feedback" style="display:none;" class="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div id="fb-box" class="p-6 rounded-3xl border-4">
+                            <div id="fb-result" class="text-3xl font-black mb-2"></div>
+                            <div id="fb-detail" class="text-gray-700"></div>
+                            <button id="next-btn" class="w-full mt-6 bg-indigo-900 text-white font-black py-4 rounded-2xl hover:bg-black transition shadow-lg">NEXT</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="result" style="display:none;" class="bg-white rounded-3xl shadow-2xl p-10 text-center border border-gray-100">
+            <h2 class="text-sm font-black text-indigo-400 tracking-widest uppercase mb-2">Mission Accomplished</h2>
+            <div class="text-8xl font-black text-indigo-900 mb-8" id="final-score">0</div>
+            <div class="grid grid-cols-2 gap-4 mb-10">
+                <div class="p-6 bg-indigo-50 rounded-3xl">
+                    <div class="text-indigo-400 text-xs font-black uppercase mb-1">Accuracy</div>
+                    <div id="final-accuracy" class="text-3xl font-black text-indigo-900">0%</div>
+                </div>
+                <div id="rank-box" class="p-6 bg-indigo-50 rounded-3xl">
+                    <div class="text-indigo-400 text-xs font-black uppercase mb-1">Rank</div>
+                    <div id="final-rank" class="text-3xl font-black text-indigo-900">-</div>
+                </div>
+            </div>
+            <button id="retry-btn" class="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl hover:bg-indigo-700 transition shadow-xl">Re-Challenge</button>
+        </section>
+    </main>
+
+    <footer class="text-center text-gray-400 text-xs font-bold py-8 tracking-widest">
+        INARI Bengal leading Games v4.0
+    </footer>
+</div>
+
+<script>
+let state = { mode: 'place', questions: [], currentIdx: 0, score: 0, correctCount: 0, limit: 15, timer: null, startTime: null, isLocked: false };
+
+function $(selector) { return document.querySelector(selector); }
+
+function shuffle(array) {
+    const result = [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+}
+
+function getConsonants() {
+    return typeof CONSONANT_DATA !== 'undefined' && Array.isArray(CONSONANT_DATA) ? CONSONANT_DATA : [];
+}
+
+function getVowelSigns() {
+    return typeof VOWEL_SIGN_DATA !== 'undefined' && Array.isArray(VOWEL_SIGN_DATA) ? VOWEL_SIGN_DATA : [];
+}
+
+function getPlaces() {
+    return typeof PLACE_DATA !== 'undefined' && Array.isArray(PLACE_DATA) ? PLACE_DATA : [];
+}
+
+function buildSyllableData() {
+    // Lv2では「母音記号がある形」だけを出す。
+    // 記号なしの内在母音ɔは、Lv1の子音解説で扱う方が混乱しにくい。
+    const vowelSigns = getVowelSigns().filter(v => v.sign !== '');
+    return getConsonants().flatMap(c => vowelSigns.map(v => ({
+        q: c.q + v.sign,
+        a: c.roman + v.vowel,
+        type: '子音＋母音',
+        desc: `${c.q}（${c.roman}）＋ ${v.display}（${v.vowel}）= ${c.q + v.sign}（${c.roman + v.vowel}）。${v.desc}`,
+        baseConsonant: c,
+        vowelSign: v
+    })));
+}
+
+function getDataByMode(mode) {
+    if (mode === 'consonant') return getConsonants();
+    if (mode === 'syllable') return buildSyllableData();
+    return getPlaces();
+}
+
+function getModeLabel(mode) {
+    if (mode === 'consonant') return '子音';
+    if (mode === 'syllable') return '子音＋母音';
+    return '実戦地名';
+}
+
+function updateModeCounts() {
+    $('#consonant-total').textContent = `現在${getConsonants().length}文字`;
+    $('#syllable-total').textContent = `現在${buildSyllableData().length}パターン`;
+    $('#place-total').textContent = `現在${getPlaces().length}地点`;
+}
+
+function initQuiz() {
+    state.mode = $('input[name="mode"]:checked').value;
+    state.limit = parseInt($('#limit').value, 10);
+
+    const countVal = $('#count').value;
+    const rawData = getDataByMode(state.mode);
+
+    if (rawData.length === 0) {
+        alert('クイズデータが読み込めていません。character.js / bengalnames.js が index.html と同じフォルダにあるか確認してください。');
+        return;
+    }
+
+    const requestedCount = countVal === 'all' ? rawData.length : parseInt(countVal, 10);
+    const count = Math.min(requestedCount, rawData.length);
+
+    state.questions = shuffle(rawData).slice(0, count).map(item => {
+        // 重複なしで3つの誤答を選ぶ（同じaラベルが選択肢に2つ出ないようにする）
+        const usedAnswers = new Set([item.a]);
+        const distractors = [];
+        const candidates = shuffle(rawData.filter(d => d.a !== item.a));
+        for (const d of candidates) {
+            if (!usedAnswers.has(d.a)) {
+                usedAnswers.add(d.a);
+                distractors.push(d.a);
+                if (distractors.length === 3) break;
+            }
+        }
+        return { ...item, options: shuffle([item.a, ...distractors]) };
+    });
+
+    state.currentIdx = 0;
+    state.score = 0;
+    state.correctCount = 0;
+    $('#q-score').textContent = 'Score: 0';
+
+    showScreen('quiz');
+    renderQuestion();
+}
+
+function renderQuestion() {
+    clearInterval(state.timer);
+    state.isLocked = false;
+
+    const q = state.questions[state.currentIdx];
+    $('#q-no').textContent = `${getModeLabel(state.mode)} ${state.currentIdx + 1} / ${state.questions.length}`;
+
+    const display = $('#q-display');
+    display.textContent = q.q;
+    if (state.mode === 'place') {
+        display.className = 'bengali-text text-5xl md:text-7xl font-black text-indigo-900 drop-shadow-sm text-center px-4 break-words leading-tight';
+    } else if (state.mode === 'syllable') {
+        display.className = 'bengali-text text-8xl md:text-9xl font-black text-indigo-900 drop-shadow-sm text-center px-4 break-words';
+    } else {
+        display.className = 'bengali-text text-9xl font-black text-indigo-900 drop-shadow-sm text-center px-4 break-words';
+    }
+
+    $('#feedback').style.display = 'none';
+    $('#options').style.display = 'grid';
+
+    const optsDiv = $('#options');
+    optsDiv.innerHTML = '';
+
+    q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'opt btn p-6 border-2 border-gray-200 rounded-3xl text-xl font-black hover:border-indigo-400 hover:bg-indigo-50 text-indigo-900';
+        btn.type = 'button';
+        btn.textContent = opt;
+        btn.onclick = () => handleAnswer(opt);
+        optsDiv.appendChild(btn);
+    });
+
+    startTimer();
+}
+
+function handleAnswer(selected) {
+    if (state.isLocked) return;
+    state.isLocked = true;
+    clearInterval(state.timer);
+
+    const q = state.questions[state.currentIdx];
+    const isTimeout = selected === null;
+    const isCorrect = selected === q.a;
+    const timeTaken = (Date.now() - state.startTime) / 1000;
+
+    markOptions(selected, q.a);
+    renderFeedback(q, isCorrect, isTimeout);
+
+    if (isCorrect) {
+        state.correctCount++;
+        const timeBonus = state.limit > 0 ? Math.max(0, Math.floor((state.limit - timeTaken) * 20)) : 50;
+        state.score += 100 + timeBonus;
+    }
+
+    $('#q-score').textContent = `Score: ${state.score}`;
+    $('#feedback').style.display = 'block';
+}
+
+function markOptions(selected, answer) {
+    document.querySelectorAll('.opt').forEach(btn => {
+        btn.disabled = true;
+        btn.classList.remove('hover:border-indigo-400', 'hover:bg-indigo-50');
+
+        if (btn.textContent === answer) btn.classList.add('correct');
+        else if (btn.textContent === selected) btn.classList.add('wrong');
+    });
+}
+
+function renderFeedback(q, isCorrect, isTimeout) {
+    const fbBox = $('#fb-box');
+    const fbResult = $('#fb-result');
+    const fbDetail = $('#fb-detail');
+
+    if (isCorrect) {
+        fbResult.textContent = 'EXCELLENT';
+        fbResult.className = 'text-3xl font-black mb-2 text-green-600';
+        fbBox.className = 'p-6 rounded-3xl border-4 border-green-500 bg-green-50';
+    } else if (isTimeout) {
+        fbResult.textContent = 'TIME UP';
+        fbResult.className = 'text-3xl font-black mb-2 text-orange-600';
+        fbBox.className = 'p-6 rounded-3xl border-4 border-orange-500 bg-orange-50';
+    } else {
+        fbResult.textContent = 'FAILED';
+        fbResult.className = 'text-3xl font-black mb-2 text-red-600';
+        fbBox.className = 'p-6 rounded-3xl border-4 border-red-500 bg-red-50';
+    }
+
+    fbDetail.textContent = '';
+    fbDetail.append(makeTagRow(q.type), makeAnswerLine(q), makeDescription(q.desc));
+
+    if (state.mode === 'consonant') fbDetail.append(makeConsonantExplanation(q));
+    else if (state.mode === 'syllable') fbDetail.append(makeSyllableExplanation(q));
+    else if (state.mode === 'place') fbDetail.append(makePlaceExplanation(q));
+}
+
+function makeTagRow(type) {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 mb-3';
+    const tag = document.createElement('span');
+    tag.className = 'px-3 py-1 bg-white border-2 border-gray-200 rounded-full text-[10px] font-black text-gray-400 uppercase tracking-widest';
+    tag.textContent = type;
+    row.appendChild(tag);
+    return row;
+}
+
+function makeAnswerLine(q) {
+    const line = document.createElement('div');
+    line.className = 'text-3xl md:text-4xl font-black text-indigo-900 mb-2 break-words';
+
+    const qText = document.createElement('span');
+    qText.className = 'bengali-text';
+    qText.textContent = q.q;
+
+    const equalText = document.createElement('span');
+    equalText.className = 'text-gray-300 mx-2';
+    equalText.textContent = '=';
+
+    const aText = document.createElement('span');
+    aText.textContent = q.a;
+
+    line.append(qText, equalText, aText);
+    return line;
+}
+
+function makeDescription(text) {
+    const desc = document.createElement('p');
+    desc.className = 'font-bold text-gray-600 mb-5';
+    desc.textContent = text;
+    return desc;
+}
+
+function makeConsonantExplanation(q) {
+    const box = makeAnalysisBox('読み方メモ');
+    const p = document.createElement('p');
+    p.className = 'text-sm font-bold text-gray-600 leading-relaxed';
+    p.textContent = `このモードでは「子音の骨格」を答える。実際の単独文字では母音記号がなくても内在母音が乗るので、${q.q} は ${q.roman} + ɔ = ${q.roman}ɔ っぽく読まれる。`;
+    box.appendChild(p);
+    return box;
+}
+
+function makeSyllableExplanation(q) {
+    const box = makeAnalysisBox('子音＋母音の分解');
+    const grid = document.createElement('div');
+    grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-3';
+
+    const c = q.baseConsonant;
+    const v = q.vowelSign;
+    grid.append(
+        makeMiniCard(c.q, '子音', `${c.roman} / ${c.type}`),
+        makeMiniCard(v.display, '母音記号', `${v.vowel} / ${v.label}`),
+        makeMiniCard(q.q, '完成形', `${c.roman} + ${v.vowel} = ${q.a}`)
+    );
+    box.appendChild(grid);
+
+    const note = document.createElement('p');
+    note.className = 'mt-4 text-sm font-bold text-gray-600 leading-relaxed';
+    note.textContent = v.sign === ''
+        ? '母音記号がないときは、子音に最初から内在母音ɔが乗る。ここがベンガル文字の最初の大事ポイント。'
+        : v.desc;
+    box.appendChild(note);
+    return box;
+}
+
+function makePlaceExplanation(place) {
+    const box = makeAnalysisBox('地名のざっくり分解');
+
+    const note = document.createElement('p');
+    note.className = 'text-sm font-bold text-gray-600 leading-relaxed mb-4';
+    note.textContent = '各音節を子音＋母音に分解しています。語末の母音が弱まったり合字で読みが変わることがありますが、看板判読の参考にしてください。';
+    box.appendChild(note);
+
+    const grid = document.createElement('div');
+    grid.className = 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+    const parts = place.hintParts || analyzeBengaliWord(place.q);
+    if (parts.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-gray-400';
+        empty.textContent = '分解データなし';
+        grid.appendChild(empty);
+    } else {
+        parts.forEach(part => grid.appendChild(makeMiniCard(part.text, part.label, part.desc)));
+    }
+    box.appendChild(grid);
+    return box;
+}
+
+function makeAnalysisBox(titleText) {
+    const box = document.createElement('div');
+    box.className = 'analysis-card mt-5 p-5 rounded-3xl border-2 border-white shadow-sm';
+
+    const title = document.createElement('h3');
+    title.className = 'font-black text-indigo-900 mb-3';
+    title.textContent = titleText;
+    box.appendChild(title);
+    return box;
+}
+
+function makeMiniCard(main, label, desc) {
+    const card = document.createElement('div');
+    card.className = 'bg-white border-2 border-gray-100 rounded-2xl p-4';
+
+    const mainEl = document.createElement('div');
+    mainEl.className = 'bengali-text text-3xl font-black text-indigo-900 mb-1 break-words';
+    mainEl.textContent = main;
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1';
+    labelEl.textContent = label;
+
+    const descEl = document.createElement('div');
+    descEl.className = 'text-xs font-bold text-gray-600 leading-relaxed';
+    descEl.textContent = desc;
+
+    card.append(mainEl, labelEl, descEl);
+    return card;
+}
+
+function makeLookup(data, keyName) {
+    return data.reduce((acc, item) => {
+        acc[item[keyName]] = item;
+        return acc;
+    }, {});
+}
+
+function analyzeBengaliWord(word) {
+    const consonantMap = makeLookup(getConsonants(), 'q');
+    const vowelMap = makeLookup(getVowelSigns().filter(v => v.sign !== ''), 'sign');
+    const independentVowels = {
+        'অ': { roman: 'ɔ', desc: '独立母音ɔ。子音なしで母音だけを書く形。' },
+        'আ': { roman: 'a', desc: '独立母音a。' },
+        'ই': { roman: 'i', desc: '独立母音i。' },
+        'ঈ': { roman: 'iː', desc: '独立母音iː。' },
+        'উ': { roman: 'u', desc: '独立母音u。' },
+        'ঊ': { roman: 'uː', desc: '独立母音uː。' },
+        'এ': { roman: 'e', desc: '独立母音e。' },
+        'ঐ': { roman: 'oi', desc: '独立母音oi。' },
+        'ও': { roman: 'o', desc: '独立母音o。' },
+        'ঔ': { roman: 'ou', desc: '独立母音ou。' }
+    };
+    const afterMarks = {
+        'ঁ': '鼻母音化。音に鼻っぽさが足される。',
+        'ং': 'ング系の鼻音。地名・語末でよく見る。',
+        'ঃ': '息を抜くような記号。実戦頻度は低め。'
+    };
+    const chars = Array.from(word);
+    const parts = [];
+    let i = 0;
+
+    function readConsonant(pos) {
+        const one = chars[pos] || '';
+        const two = one + (chars[pos + 1] || '');
+        if (consonantMap[two]) return { base: consonantMap[two], text: two, next: pos + 2 };
+        if (consonantMap[one]) return { base: consonantMap[one], text: one, next: pos + 1 };
+        return null;
+    }
+
+    while (i < chars.length) {
+        const ch = chars[i];
+        const first = readConsonant(i);
+
+        if (first) {
+            let text = first.text;
+            const bases = [first.base];
+            i = first.next;
+
+            while (i < chars.length && chars[i] === '্') {
+                const next = readConsonant(i + 1);
+                if (!next) break;
+                text += chars[i] + next.text;
+                bases.push(next.base);
+                i = next.next;
+            }
+
+            let vowel = { display: 'なし', vowel: 'ɔ', label: '内在母音', desc: '母音記号なし＝内在母音ɔ。' };
+            if (i < chars.length && vowelMap[chars[i]]) {
+                vowel = vowelMap[chars[i]];
+                text += chars[i];
+                i++;
+            }
+
+            const trailing = [];
+            while (i < chars.length && afterMarks[chars[i]]) {
+                trailing.push({ mark: chars[i], desc: afterMarks[chars[i]] });
+                text += chars[i];
+                i++;
+            }
+
+            const baseReading = bases.map(b => b.roman).join('');
+            const label = bases.length > 1 ? '連結子音＋母音' : '子音＋母音';
+            let desc = bases.length > 1
+                ? `${bases.map(b => `${b.q}=${b.roman}`).join('、')}。্ で前の母音を消して連結。母音は ${vowel.display} = ${vowel.vowel}。ざっくり ${baseReading}${vowel.vowel}。`
+                : `${bases[0].q}=${bases[0].roman}。母音は ${vowel.display} = ${vowel.vowel}。ざっくり ${baseReading}${vowel.vowel}。`;
+            if (trailing.length) {
+                desc += ' ' + trailing.map(t => `${t.mark}: ${t.desc}`).join(' ');
+            }
+            parts.push({ text, label, desc });
+            continue;
+        }
+
+        if (independentVowels[ch]) {
+            parts.push({ text: ch, label: '独立母音', desc: independentVowels[ch].desc });
+            i++;
+            continue;
+        }
+
+        if (afterMarks[ch]) {
+            parts.push({ text: ch, label: '記号', desc: afterMarks[ch] });
+            i++;
+            continue;
+        }
+
+        if (ch === '়') {
+            parts.push({ text: ch, label: 'ヌクタ', desc: '直前の子音と結びつく下点。通常は単独では読まない。' });
+            i++;
+            continue;
+        }
+
+        parts.push({ text: ch, label: 'その他', desc: 'スペース・記号・未登録文字。' });
+        i++;
+    }
+
+    return parts;
+}
+
+function startTimer() {
+    clearInterval(state.timer);
+    state.startTime = Date.now();
+
+    if (state.limit === 0) {
+        $('#timer-bar').style.width = '100%';
+        return;
+    }
+
+    const deadline = state.startTime + state.limit * 1000;
+    $('#timer-bar').style.width = '100%';
+
+    state.timer = setInterval(() => {
+        const remainingMs = deadline - Date.now();
+        const percent = Math.max(0, Math.min(100, (remainingMs / (state.limit * 1000)) * 100));
+        $('#timer-bar').style.width = `${percent}%`;
+
+        if (remainingMs <= 0) {
+            clearInterval(state.timer);
+            if (!state.isLocked) handleAnswer(null);
+        }
+    }, 100);
+}
+
+function showScreen(name) {
+    ['setup', 'quiz', 'result'].forEach(id => {
+        $('#' + id).style.display = id === name ? 'block' : 'none';
+    });
+}
+
+function showResult() {
+    clearInterval(state.timer);
+    showScreen('result');
+
+    $('#final-score').textContent = state.score;
+
+    const total = state.questions.length || 1;
+    const acc = Math.round((state.correctCount / total) * 100);
+    $('#final-accuracy').textContent = `${acc}%`;
+    $('#final-rank').textContent = acc === 100 ? 'S' : acc > 80 ? 'A' : acc > 60 ? 'B' : 'C';
+}
+
+$('#start-btn').onclick = initQuiz;
+$('#next-btn').onclick = () => {
+    state.currentIdx++;
+    if (state.currentIdx < state.questions.length) renderQuestion();
+    else showResult();
+};
+$('#retry-btn').onclick = () => showScreen('setup');
+
+updateModeCounts();
+</script>
+</body>
+</html>
